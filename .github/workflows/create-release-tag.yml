@@ -1,0 +1,121 @@
+name: Create Release Tag
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+          ref: master
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Determine target version (bump if needed)
+        id: version
+        run: |
+          set -euo pipefail
+
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "package.json version: $PKG_VERSION"
+
+          LATEST_TAG=$(git tag -l 'v*' | sed 's/^v//' | sort -V | tail -n1)
+          echo "latest released version: ${LATEST_TAG:-<none>}"
+
+          TARGET="$PKG_VERSION"
+
+          if [ -n "$LATEST_TAG" ]; then
+            HIGHEST=$(printf '%s\n%s\n' "$PKG_VERSION" "$LATEST_TAG" | sort -V | tail -n1)
+
+            if [ "$PKG_VERSION" = "$LATEST_TAG" ] || [ "$HIGHEST" = "$LATEST_TAG" ]; then
+              echo "package version ($PKG_VERSION) is <= latest release ($LATEST_TAG) — bumping patch."
+              BASE="$HIGHEST"
+              MAJOR=$(echo "$BASE" | cut -d. -f1)
+              MINOR=$(echo "$BASE" | cut -d. -f2)
+              PATCH=$(echo "$BASE" | cut -d. -f3)
+              TARGET="$MAJOR.$MINOR.$((PATCH + 1))"
+            fi
+          fi
+
+          echo "target version: $TARGET"
+          echo "version=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "tag=v$TARGET" >> "$GITHUB_OUTPUT"
+          echo "bumped=$([ "$TARGET" = "$PKG_VERSION" ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply version bump and refresh lockfile
+        if: steps.version.outputs.bumped == 'true'
+        run: |
+          set -euo pipefail
+          npm version "${{ steps.version.outputs.version }}" --no-git-tag-version
+          npm install --package-lock-only
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit version bump to master
+        if: steps.version.outputs.bumped == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
+          git push origin HEAD:master
+
+      - name: Package VSIX
+        run: npx vsce package --no-dependencies -o cursor-rtl.vsix
+
+      - name: Generate SHA-256 checksum
+        run: sha256sum cursor-rtl.vsix > cursor-rtl.vsix.sha256
+
+      - name: Create and push tag
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "Tag $TAG created and pushed successfully."
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          files: |
+            cursor-rtl.vsix
+            cursor-rtl.vsix.sha256
+          generate_release_notes: true
+
+      # Tags pushed with GITHUB_TOKEN don't trigger other workflows, so the
+      # publish-openvsx job in build-vsix.yml never fires for releases made
+      # here — publish directly instead.
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "$OVSX_PAT" ]; then
+            echo "::warning::OVSX_PAT secret is not set - skipping Open VSX publish. See PUBLISHING.md."
+          else
+            npx --yes ovsx@latest verify-pat -p "$OVSX_PAT" motcke
+            npx --yes ovsx@latest publish cursor-rtl.vsix -p "$OVSX_PAT"
+          fi

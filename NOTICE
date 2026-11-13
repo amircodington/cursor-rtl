@@ -1,0 +1,9 @@
+Cursor RTL
+Copyright contributors; based on motcke/cursor-ext-rtl
+https://github.com/motcke/cursor-ext-rtl
+
+Licensed under the Apache License, Version 2.0.
+See the LICENSE file for the full license text.
+
+This distribution removes Application Insights telemetry and ships Persian
+install docs focused on mixed Persian/English BiDi in Cursor Chat and Agent.

@@ -1,0 +1,137 @@
+{
+  "name": "cursor-rtl",
+  "displayName": "Cursor RTL — فارسی / Arabic / Hebrew",
+  "description": "سراسری: راست‌چین درست برای چت، ایجنت، پلن و ویرایشگر Cursor با پشتیبانی BiDi برای فارسی+انگلیسی وسط جمله",
+  "version": "2.1.1",
+  "publisher": "local",
+  "license": "Apache-2.0",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amircodington/cursor-rtl"
+  },
+  "homepage": "https://github.com/amircodington/cursor-rtl#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "rtl",
+    "arabic",
+    "hebrew",
+    "persian",
+    "farsi",
+    "bidi",
+    "cursor",
+    "chat",
+    "right-to-left"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "markdown.markdownItPlugins": true,
+    "markdown.previewStyles": [
+      "./resources/markdown-preview-rtl.css"
+    ],
+    "commands": [
+      {
+        "command": "cursorRtl.enable",
+        "title": "Cursor RTL: فعال‌سازی / رفع بعد از آپدیت"
+      },
+      {
+        "command": "cursorRtl.disable",
+        "title": "Cursor RTL: غیرفعال‌سازی"
+      },
+      {
+        "command": "cursorRtl.status",
+        "title": "Cursor RTL: وضعیت"
+      },
+      {
+        "command": "cursorRtl.setEditorRtl",
+        "title": "Cursor RTL: جهت ویرایشگر کد (Auto / Always / Off)"
+      },
+      {
+        "command": "cursorRtl.diagnostics",
+        "title": "Cursor RTL: تشخیص مشکل"
+      }
+    ],
+    "configuration": {
+      "title": "Cursor RTL",
+      "properties": {
+        "cursorRtl.editorRtl": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "off"
+          ],
+          "enumDescriptions": [
+            "جهت ویرایشگر بر اساس زبان غالب فایل: فارسی/عربی/عبری RTL، کد و انگلیسی LTR",
+            "همه ویرایشگرها راست‌به‌چپ",
+            "جهت ویرایشگر را تغییر نده"
+          ],
+          "default": "auto",
+          "description": "جهت راست‌به‌چپ برای ویرایشگر کد (Monaco)، شامل Markdown و متن ساده"
+        },
+        "cursorRtl.editorRtlByLanguage": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "always",
+              "off"
+            ]
+          },
+          "default": {},
+          "markdownDescription": "جهت ویرایشگر برای زبان‌های خاص، جایگزین `#cursorRtl.editorRtl#`. مثال: `markdown` → `always`"
+        },
+        "cursorRtl.markdownPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "پشتیبانی RTL در پیش‌نمایش Markdown"
+        },
+        "cursorRtl.autoReloadAfterPatch": {
+          "type": "boolean",
+          "default": true,
+          "description": "بعد از اعمال مجدد پچ (مثلاً بعد از آپدیت Cursor) پنجره را خودکار Reload کند"
+        },
+        "cursorRtl.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "نمایش وضعیت RTL در نوار وضعیت"
+        },
+        "cursorRtl.checkForExtensionUpdates": {
+          "type": "boolean",
+          "default": false,
+          "description": "بررسی آپدیت اکستنشن از GitHub (پیش‌فرض خاموش در این فورک)"
+        },
+        "cursorRtl.updateCheckIntervalHours": {
+          "type": "number",
+          "default": 6,
+          "minimum": 1,
+          "description": "فاصله بررسی آپدیت بر حسب ساعت"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "package": "npm run clean && npm run build && vsce package --no-dependencies",
+    "lint": "tsc --noEmit",
+    "vscode:uninstall": "node dist/uninstall.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^5.5.0"
+  }
+}
